@@ -2,11 +2,12 @@
 
 #define PIN2 2
 #define PIN4 4
+#define PIN6 6
+#define PIN9 9
 #define PIN7 7
 
 int pirState = LOW;
 int val = 0;
-int onboardLed = 13;
 int motionSensor = PIN7;
 
 // Parameter 1 = number of pixels in strip
@@ -17,41 +18,23 @@ int motionSensor = PIN7;
 //   NEO_GRB     Pixels are wired for GRB bitstream (most NeoPixel products)
 //   NEO_RGB     Pixels are wired for RGB bitstream (v1 FLORA pixels, not v2)
 Adafruit_NeoPixel strips [2] = {
-  Adafruit_NeoPixel(148, PIN2, NEO_RGB + NEO_KHZ400),
-  Adafruit_NeoPixel(148, PIN4, NEO_RGB + NEO_KHZ400),
+  Adafruit_NeoPixel(153, PIN6, NEO_RGB + NEO_KHZ800),
+  Adafruit_NeoPixel(153, PIN9, NEO_RGB + NEO_KHZ800),
 };
 
 void setup() {
   uint16_t i;
 
-  pinMode(onboardLed, OUTPUT);  // declare LED as output
-  pinMode(PIN2, INPUT);  // declare sensor as input
-
-  Serial.begin(9600);
-
   for (i=0; i<2; i++) {
     strips[i].begin();
     strips[i].show();  // Initialize all pixels to 'off'
   }
-  Serial.print("worky");
 
 }
 
 void loop() {
-  val = digitalRead(motionSensor);
-  if (val == HIGH) {
-    if (pirState == LOW) {
-      Serial.print("motion detected, baby\n");
-      rainbow(40);
-      pirState = HIGH;
-    }
-  } else {
-    if (pirState == HIGH) {
-      Serial.print("motion ended, dawg\n");
-      clear();
-      pirState = LOW;
-    }
-  }
+  rainbow(100);
+  // clear(10000);
 }
 
 void rainbow(uint8_t wait) {
@@ -68,15 +51,17 @@ void rainbow(uint8_t wait) {
   }
 }
 
-void clear() {
+void clear(uint8_t wait) {
   uint16_t i, k;
 
   for(k=0; k<2; k++) {
     for(i=0; i<strips[k].numPixels(); i++) {
-      strips[k].setPixelColor(i, 0, 0, 0);
+      strips[k].setPixelColor(i, 127, 127, 127);
     }
     strips[k].show();
   }
+  delay(wait);
+
 }
 
 // Input a value 0 to 255 to get a color value.
