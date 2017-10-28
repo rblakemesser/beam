@@ -1,5 +1,9 @@
+import json
 import random
 import functools
+import multiprocessing
+
+import flask
 
 from bibliopixel import log
 from bibliopixel.layout import Matrix
@@ -16,6 +20,31 @@ PIXELS_PER_STRIP = 108
 NUM_STRIPS = 2
 
 
+app = flask.Flask(__name__)
+delay = multiprocessing.Value('d', 0.05)
+brightness = multiprocessing.Value('i', 255)
+
+
+@app.route('/', methods=['POST'])
+def change_beam_state():
+    request_dict = json.loads(flask.request.data)
+
+    input_delay = request_dict.get('delay')
+    if input_delay and 0.0001 <= input_brightness <= 10::
+        delay.value = input_delay
+
+    input_brightness = request_dict.get('brightness')
+    if input_brightness and 0 <= input_brightness <= 255:
+        brightness.value = input_brightness
+
+    response_dict = {
+        'brightness': brightness.value,
+        'delay': delay.value,
+    }
+
+    return flask.Response(json.dumps(response_dict), 200)
+
+
 class Interrupt(Exception):
     pass
 
@@ -23,29 +52,36 @@ class Interrupt(Exception):
 def check_interrupt(fn):
     @functools.wraps(fn)
     def wrapped(*args, **kwargs):
-        if switch_input():
-            raise Interrupt()
         return fn(*args, **kwargs)
 
     return wrapped
 
 
-def switch_input():
-    return random.random() < .01
-
-
 class Interruptable(BaseMatrixAnim):
-    def __init__(self, layout, delay):
+    def __init__(self, layout, d):
         super().__init__(layout)
-        self.set_delay(delay)
+        self.set_delay(d)
 
-    def set_delay(self, delay):
-        self.internal_delay = delay
+    def set_delay(self, d):
+        if d == self.internal_delay:
+            return
+
+        log.info('setting the damn delay')
+        self.internal_delay = d
+
+    def set_brightness(self, b):
+        if b == self.layout.brightness:
+            return
+
+        log.info('setting the damn brightness')
+        self.layout.set_brightness(b)
 
 
 class Rainbow(Interruptable):
     @check_interrupt
     def step(self, amt=1):
+        self.set_delay(delay.value)
+        self.set_brightness(brightness.value)
         for px in range(self.layout.numLEDs):
             row = px % PIXELS_PER_STRIP
             c = colors.wheel.wheel_color((self._step + row) % 384)
@@ -54,10 +90,10 @@ class Rainbow(Interruptable):
         self._step += amt
 
 
-class White(Interruptable):
-
+class Light(Interruptable):
     @check_interrupt
     def step(self, amt=1):
+        self.set_brightness(brightness.value)
         for px in range(self.layout.numLEDs):
             row = px % PIXELS_PER_STRIP
             c = colors.COLORS.WHITE
@@ -68,8 +104,8 @@ class White(Interruptable):
 
 def get_new_input_class(key=None):
     animation_dict = {
-        'rainbox': Rainbow,
-        'white': White,
+        'rainbow': Rainbow,
+        'light': Light,
     }
 
     if key:
@@ -80,13 +116,15 @@ def get_new_input_class(key=None):
 
 
 def main_loop(led):
-    while True:
-        animation_class = get_new_input_class()
-        speed = 0.05
+    p = multiprocessing.Process(target=app.run, kwargs={'port': 5555}, daemon=True)
+    p.start()
 
-        log.info('Starting {} animation at speed {}'.format(animation_class.__name__, speed))
-        animation = animation_class(led, speed)
+    while True:
+        animation_class = get_new_input_class('rainbow')
+        animation = animation_class(led, delay.value)
         animation.set_runner(None)
+
+        log.info('starting new sequence')
 
         try:
             animation.run_all_frames()
@@ -96,7 +134,7 @@ def main_loop(led):
 
 if __name__ == '__main__':
     driver = SimPixel.SimPixel(num=PIXELS_PER_STRIP * NUM_STRIPS)
-    led = Matrix(driver, width=PIXELS_PER_STRIP, height=NUM_STRIPS, serpentine=False)
+    led = Matrix(driver, width=PIXELS_PER_STRIP, height=NUM_STRIPS, brightness=brightness.value, serpentine=False)
 
     main_loop(led)
 
