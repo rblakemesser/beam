@@ -1,7 +1,9 @@
 import json
+import ctypes
 import random
 import functools
 import multiprocessing
+from enum import Enum
 
 import flask
 
@@ -20,9 +22,15 @@ PIXELS_PER_STRIP = 108
 NUM_STRIPS = 2
 
 
+class Animation(Enum):
+    rainbow = 1
+    light = 2
+
+
 app = flask.Flask(__name__)
 delay = multiprocessing.Value('d', 0.05)
 brightness = multiprocessing.Value('i', 255)
+animation = multiprocessing.Value('d', Animation.rainbow.value)
 
 
 @app.route('/', methods=['POST'])
@@ -30,16 +38,21 @@ def change_beam_state():
     request_dict = json.loads(flask.request.data)
 
     input_delay = request_dict.get('delay')
-    if input_delay and 0.0001 <= input_brightness <= 10::
+    if input_delay and 0.0001 <= input_delay <= 10:
         delay.value = input_delay
 
     input_brightness = request_dict.get('brightness')
     if input_brightness and 0 <= input_brightness <= 255:
         brightness.value = input_brightness
 
+    input_animation = request_dict.get('animation')
+    if input_animation in {'rainbow', 'light'}:
+        animation.value = Animation[input_animation].value
+
     response_dict = {
         'brightness': brightness.value,
         'delay': delay.value,
+        'animation': Animation(animation.value).name,
     }
 
     return flask.Response(json.dumps(response_dict), 200)
@@ -51,8 +64,12 @@ class Interrupt(Exception):
 
 def check_interrupt(fn):
     @functools.wraps(fn)
-    def wrapped(*args, **kwargs):
-        return fn(*args, **kwargs)
+    def wrapped(self, *args, **kwargs):
+        if animation.value and Animation(animation.value).name != self.name:
+            log.info('changing from {} to {}'.format(self.name, Animation(animation.value).name))
+            raise Interrupt('changing sequence')
+
+        return fn(self, *args, **kwargs)
 
     return wrapped
 
@@ -66,18 +83,18 @@ class Interruptable(BaseMatrixAnim):
         if d == self.internal_delay:
             return
 
-        log.info('setting the damn delay')
         self.internal_delay = d
 
     def set_brightness(self, b):
         if b == self.layout.brightness:
             return
 
-        log.info('setting the damn brightness')
         self.layout.set_brightness(b)
 
 
 class Rainbow(Interruptable):
+    name = 'rainbow'
+
     @check_interrupt
     def step(self, amt=1):
         self.set_delay(delay.value)
@@ -91,6 +108,8 @@ class Rainbow(Interruptable):
 
 
 class Light(Interruptable):
+    name = 'light'
+
     @check_interrupt
     def step(self, amt=1):
         self.set_brightness(brightness.value)
@@ -109,7 +128,8 @@ def get_new_input_class(key=None):
     }
 
     if key:
-        return animation_dict[key]
+        animation_name = Animation(key).name
+        return animation_dict[animation_name]
 
     vals = list(animation_dict.values())
     return random.choice(vals)
@@ -120,16 +140,16 @@ def main_loop(led):
     p.start()
 
     while True:
-        animation_class = get_new_input_class('rainbow')
-        animation = animation_class(led, delay.value)
-        animation.set_runner(None)
+        animation_class = get_new_input_class(animation.value)
+        anim = animation_class(led, delay.value)
+        anim.set_runner(None)
 
-        log.info('starting new sequence')
+        log.info('starting {} sequence'.format(anim.name))
 
         try:
-            animation.run_all_frames()
+            anim.run_all_frames()
         except Interrupt:
-            log.info('interrupt fired')
+            pass
 
 
 if __name__ == '__main__':
