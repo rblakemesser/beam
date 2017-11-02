@@ -39,18 +39,6 @@ animation = Animation.rainbow.value
 colors = [color_util.hex2rgb('#ffffff')]
 
 
-@app.route('/', methods=['GET'])
-def idx():
-    return flask.render_template(
-        'beam.html',
-        colors=colors,
-        animation=Animation(animation).name,
-        brightness=brightness,
-        delay=delay,
-        animation_names=animation_names,
-    )
-
-
 @app.route('/', methods=['POST'])
 def change_beam_state():
     request_dict = json.loads(flask.request.data) if flask.request.data else flask.request.form
@@ -110,7 +98,18 @@ def check_interrupt(fn):
     return wrapped
 
 
-class Interruptable(BaseMatrixAnim):
+def adjustable(fn):
+    @functools.wraps(fn)
+    def wrapped(self, *args, **kwargs):
+        self.set_delay(delay)
+        self.set_brightness(brightness)
+
+        return fn(self, *args, **kwargs)
+
+    return wrapped
+
+
+class BaseBeamAnim(BaseMatrixAnim):
     def __init__(self, layout, d):
         super().__init__(layout)
         self.set_delay(d)
@@ -128,13 +127,12 @@ class Interruptable(BaseMatrixAnim):
         self.layout.set_brightness(b)
 
 
-class Rainbow(Interruptable):
+class Rainbow(BaseBeamAnim):
     name = Animation.rainbow.name
 
     @check_interrupt
+    @adjustable
     def step(self, amt=1):
-        self.set_delay(delay)
-        self.set_brightness(brightness)
         for px in range(self.layout.numLEDs):
             row = px % PIXELS_PER_STRIP
             c = color_util.wheel.wheel_color((self._step + row) % 384)
@@ -143,12 +141,12 @@ class Rainbow(Interruptable):
         self._step += amt
 
 
-class Light(Interruptable):
+class Light(BaseBeamAnim):
     name = Animation.light.name
 
     @check_interrupt
+    @adjustable
     def step(self, amt=1):
-        self.set_brightness(brightness)
         for px in range(self.layout.numLEDs):
             col_color = colors[px % len(colors)]
             self.layout._set_base(px, col_color)
@@ -156,13 +154,12 @@ class Light(Interruptable):
         self._step += amt
 
 
-class Strip(Interruptable):
+class Strip(BaseBeamAnim):
     name = Animation.strip.name
 
     @check_interrupt
+    @adjustable
     def step(self, amt=1):
-        self.set_brightness(brightness)
-        self.set_delay(delay)
         for px in range(self.layout.numLEDs):
             col_color = colors[(self._step + px) % len(colors)]
             self.layout._set_base(px, col_color)
@@ -170,7 +167,7 @@ class Strip(Interruptable):
         self._step += amt
 
 
-class Bloom(Interruptable):
+class Bloom(BaseBeamAnim):
     name = Animation.bloom.name
 
     def __init__(self, layout, d, dir=True):
@@ -179,10 +176,8 @@ class Bloom(Interruptable):
         self._dir = dir
 
     @check_interrupt
+    @adjustable
     def step(self, amt=8):
-        self.set_delay(delay)
-        self.set_brightness(brightness)
-
         if self._dir:
             s = 255 - self._step
         else:
@@ -237,4 +232,3 @@ if __name__ == '__main__':
     led = Matrix(driver, width=PIXELS_PER_STRIP, height=NUM_STRIPS, brightness=brightness, serpentine=False)
 
     main_loop(led)
-
