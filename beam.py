@@ -31,17 +31,29 @@ class Animation(Enum):
 
 animation_names = list(map(lambda a: a.name, list(Animation)))
 
-
 app = flask.Flask(__name__)
+
 delay = .05
 brightness = 255
 animation = Animation.rainbow.value
-colors = [0]  # wheel numbers 0 -> 384
+colors = [color_util.hex2rgb('#ffffff')]
+
+
+@app.route('/', methods=['GET'])
+def idx():
+    return flask.render_template(
+        'beam.html',
+        colors=colors,
+        animation=Animation(animation).name,
+        brightness=brightness,
+        delay=delay,
+        animation_names=animation_names,
+    )
 
 
 @app.route('/', methods=['POST'])
 def change_beam_state():
-    request_dict = json.loads(flask.request.data if flask.request.data else flask.request.form)
+    request_dict = json.loads(flask.request.data) if flask.request.data else flask.request.form
 
     input_delay = request_dict.get('delay')
     if input_delay and 0.0001 <= input_delay <= 10:
@@ -61,18 +73,25 @@ def change_beam_state():
         log.info('unknown animation: {}'.format(input_animation))
 
     input_colors = request_dict.get('colors', [])
-    if input_colors and all([0 <= c <= 384 for c in input_colors]):
-        global colors
-        colors = input_colors
+    if input_colors:
+        try:
+            input_colors = list(map(color_util.hex2rgb, input_colors))
+            global colors
+            colors = input_colors
+        except KeyError:
+            log.info('invalid color passed')
 
-    response_dict = {
-        'brightness': brightness,
-        'delay': delay,
-        'animation': Animation(animation).name,
-        'colors': colors,
-    }
+    if flask.request.data:
+        response_dict = {
+            'brightness': brightness,
+            'delay': delay,
+            'animation': Animation(animation).name,
+            'colors': colors,
+        }
 
-    return flask.Response(json.dumps(response_dict), 200)
+        return flask.Response(json.dumps(response_dict), 200)
+    else:
+        return flask.redirect('/')
 
 
 class Interrupt(Exception):
@@ -132,8 +151,7 @@ class Light(Interruptable):
         self.set_brightness(brightness)
         for px in range(self.layout.numLEDs):
             col_color = colors[px % len(colors)]
-            c = color_util.wheel.wheel_color(col_color)
-            self.layout._set_base(px, c)
+            self.layout._set_base(px, col_color)
 
         self._step += amt
 
@@ -147,8 +165,7 @@ class Strip(Interruptable):
         self.set_delay(delay)
         for px in range(self.layout.numLEDs):
             col_color = colors[(self._step + px) % len(colors)]
-            c = color_util.wheel.wheel_color(col_color)
-            self.layout._set_base(px, c)
+            self.layout._set_base(px, col_color)
 
         self._step += amt
 

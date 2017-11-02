@@ -1,0 +1,23 @@
+<html>
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+	</head>
+
+	<body>
+		<div>Current State</div>
+		<div>colors: {{ colors }}</div>
+		<div>brightness: {{ brightness }}</div>
+		<div>delay: {{ delay }}</div>
+		<div>animation: {{ animation }}</div>
+
+		<div>
+			<form action="/" method="post">
+				{% for anim_name in animation_names %}
+					<input type="radio" name="animation" value="{{ anim_name }}" id="anim-name-{{ anim_name }}" />
+					<label for="anim-name-{{ anim_name }}">{{ anim_name }}</label>
+				{% endfor %}
+				<button type="submit">GO</button>
+			</form>
+		</div>
+	</body>
+</html>
