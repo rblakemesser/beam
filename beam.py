@@ -13,13 +13,15 @@ from bibliopixel.drivers import SimPixel
 from bibliopixel.animation.matrix import BaseMatrixAnim
 from bibliopixel.animation.animation import STATE
 from bibliopixel.util import genVector
+
+from bibliopixel.drivers.serial import Serial, LEDTYPE
 import bibliopixel.colors as color_util
 
 
 log.setLogLevel(log.INFO)
 
 
-PIXELS_PER_STRIP = 108
+PIXELS_PER_STRIP = 76
 NUM_STRIPS = 2
 
 
@@ -228,7 +230,8 @@ def main_loop(led):
 
 
 if __name__ == '__main__':
-    driver = SimPixel.SimPixel(num=PIXELS_PER_STRIP * NUM_STRIPS)
+    # driver = SimPixel.SimPixel(num=PIXELS_PER_STRIP * NUM_STRIPS)
+    driver = Serial(num=PIXELS_PER_STRIP * NUM_STRIPS, ledtype=LEDTYPE.WS2811)
     led = Matrix(driver, width=PIXELS_PER_STRIP, height=NUM_STRIPS, brightness=brightness, serpentine=False)
 
     main_loop(led)
