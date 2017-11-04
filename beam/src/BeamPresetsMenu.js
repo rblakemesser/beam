@@ -3,23 +3,30 @@ import React, { Component } from 'react';
 
 const buttonConfigs = [
   {
-    'name': 'plain white',
+    'name': 'pure white',
     'animation': 'light',
     'colors': ['#ffffff'],
     'delay': .05,
     'brightness': 255,
   },
   {
-    'name': 'plain red',
+    'name': 'pure red',
     'animation': 'light',
     'colors': ['#FF0000'],
     'delay': .05,
     'brightness': 255,
   },
   {
-    'name': 'plain blue',
+    'name': 'pure blue',
     'animation': 'light',
     'colors': ['#0000FF'],
+    'delay': .05,
+    'brightness': 255,
+  },
+  {
+    'name': 'pure green',
+    'animation': 'light',
+    'colors': ['#008000'],
     'delay': .05,
     'brightness': 255,
   },
@@ -31,7 +38,7 @@ const buttonConfigs = [
     'brightness': 255,
   },
   {
-    'name': 'bit light',
+    'name': 'bit still',
     'animation': 'light',
     'colors': ['#9400D3', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000'],
     'delay': .05,

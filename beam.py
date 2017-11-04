@@ -13,8 +13,10 @@ from bibliopixel.drivers import SimPixel
 from bibliopixel.animation.matrix import BaseMatrixAnim
 from bibliopixel.animation.animation import STATE
 from bibliopixel.util import genVector
+from bibliopixel.animation import MatrixCalibrationTest
 
 from bibliopixel.drivers.serial import Serial, LEDTYPE
+from bibliopixel.drivers.channel_order import ChannelOrder
 import bibliopixel.colors as color_util
 
 
@@ -231,7 +233,16 @@ def main_loop(led):
 
 if __name__ == '__main__':
     # driver = SimPixel.SimPixel(num=PIXELS_PER_STRIP * NUM_STRIPS)
-    driver = Serial(num=PIXELS_PER_STRIP * NUM_STRIPS, ledtype=LEDTYPE.WS2811)
-    led = Matrix(driver, width=PIXELS_PER_STRIP, height=NUM_STRIPS, brightness=brightness, serpentine=False)
+    driver = Serial(num=PIXELS_PER_STRIP * NUM_STRIPS, ledtype=LEDTYPE.WS2811, c_order=ChannelOrder.GRB)
+
+    led = Matrix(
+        driver,
+        width=PIXELS_PER_STRIP,
+        height=2,
+        coord_map=[list(range(PIXELS_PER_STRIP)), list(reversed(range(PIXELS_PER_STRIP, 2 * PIXELS_PER_STRIP)))],
+        brightness=brightness,
+    )
 
     main_loop(led)
+    # anim = MatrixCalibrationTest(led)
+    # anim.run()
