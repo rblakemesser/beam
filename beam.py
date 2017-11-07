@@ -3,6 +3,7 @@ import ctypes
 import random
 import functools
 import threading
+import itertools
 from enum import Enum
 
 import flask
@@ -23,7 +24,7 @@ import bibliopixel.colors as color_util
 log.setLogLevel(log.INFO)
 
 
-PIXELS_PER_STRIP = 76
+PIXELS_PER_STRIP = 36
 NUM_STRIPS = 2
 
 
@@ -130,6 +131,17 @@ class BaseBeamAnim(BaseMatrixAnim):
 
         self.layout.set_brightness(b)
 
+    def grid(self):
+        points = itertools.product(
+            range(self.layout.width),
+            range(self.layout.height),
+        )
+        return points
+
+
+def get_location(x, y):
+    return (y * PIXELS_PER_STRIP) + x
+
 
 class Rainbow(BaseBeamAnim):
     name = Animation.rainbow.name
@@ -137,41 +149,53 @@ class Rainbow(BaseBeamAnim):
     @check_interrupt
     @adjustable
     def step(self, amt=1):
-        for px in range(self.layout.numLEDs):
-            row = px % PIXELS_PER_STRIP
-            c = color_util.wheel.wheel_color((self._step + row) % 384)
-            self.layout._set_base(px, c)
+        for x, y in self.grid():
+            c = color_util.wheel.wheel_color((self._step + y) % 384)
+            self.layout.set(x, y, c)
 
         self._step += amt
 
 
 class Light(BaseBeamAnim):
+    """
+    With one color, the strip is a single-colored light. With multiple,
+    the colors just alternate along the strip (but are not animated).
+    """
+
     name = Animation.light.name
 
     @check_interrupt
     @adjustable
     def step(self, amt=1):
-        for px in range(self.layout.numLEDs):
-            col_color = colors[px % len(colors)]
-            self.layout._set_base(px, col_color)
+        for x, y in self.grid():
+            c = colors[get_location(x, y) % len(colors)]
+            self.layout.set(x, y, c)
 
         self._step += amt
 
 
 class Strip(BaseBeamAnim):
+    """
+    Alternate the list of colors down the strip.
+    """
+
     name = Animation.strip.name
 
     @check_interrupt
     @adjustable
     def step(self, amt=1):
-        for px in range(self.layout.numLEDs):
-            col_color = colors[(self._step + px) % len(colors)]
-            self.layout._set_base(px, col_color)
+        for x, y in self.grid():
+            col_color = colors[(get_location(x, y) + self._step) % len(colors)]
+            self.layout.set(x, y, col_color)
 
         self._step += amt
 
 
 class Bloom(BaseBeamAnim):
+    """
+    Adapted from Maniacal labs animation lib
+    """
+
     name = Animation.bloom.name
 
     def __init__(self, layout, d, dir=True):
@@ -232,17 +256,15 @@ def main_loop(led):
 
 
 if __name__ == '__main__':
-    # driver = SimPixel.SimPixel(num=PIXELS_PER_STRIP * NUM_STRIPS)
-    driver = Serial(num=PIXELS_PER_STRIP * NUM_STRIPS, ledtype=LEDTYPE.WS2811, c_order=ChannelOrder.GRB)
+    driver = SimPixel.SimPixel(num=PIXELS_PER_STRIP * NUM_STRIPS)
+    # driver = Serial(num=PIXELS_PER_STRIP * NUM_STRIPS, ledtype=LEDTYPE.WS2811, c_order=ChannelOrder.GRB)
 
     led = Matrix(
         driver,
         width=PIXELS_PER_STRIP,
         height=2,
-        coord_map=[list(range(PIXELS_PER_STRIP)), list(reversed(range(PIXELS_PER_STRIP, 2 * PIXELS_PER_STRIP)))],
         brightness=brightness,
+        serpentine=True,
     )
 
     main_loop(led)
-    # anim = MatrixCalibrationTest(led)
-    # anim.run()
