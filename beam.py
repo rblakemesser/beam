@@ -83,6 +83,7 @@ def change_beam_state():
         }
 
         return flask.Response(json.dumps(response_dict), 200)
+
     else:
         return flask.redirect('/')
 
@@ -92,6 +93,9 @@ class Interrupt(Exception):
 
 
 def check_interrupt(fn):
+    """
+    Decorator to check whether to kill animation between calls to step()
+    """
     @functools.wraps(fn)
     def wrapped(self, *args, **kwargs):
         if animation and Animation(animation).name != self.name:
@@ -104,6 +108,10 @@ def check_interrupt(fn):
 
 
 def adjustable(fn):
+    """
+    Allows updating the delay and brightness between calls to step() from
+    the globals
+    """
     @functools.wraps(fn)
     def wrapped(self, *args, **kwargs):
         self.set_delay(delay)
@@ -114,7 +122,18 @@ def adjustable(fn):
     return wrapped
 
 
+def get_location(x, y):
+    """
+    Given x, y coordinates of a location, yield its ordinal position.
+    Sometimes useful in step() functions.
+    """
+    return (y * PIXELS_PER_STRIP) + x
+
+
 class BaseBeamAnim(BaseMatrixAnim):
+    """
+    Adds some convenience methods to the base class
+    """
     def __init__(self, layout, d):
         super().__init__(layout)
         self.set_delay(d)
@@ -132,15 +151,16 @@ class BaseBeamAnim(BaseMatrixAnim):
         self.layout.set_brightness(b)
 
     def grid(self):
+        """
+        Returns a generator that yields all pairwise x, y combinations
+        in the matrix.
+        """
+
         points = itertools.product(
             range(self.layout.width),
             range(self.layout.height),
         )
         return points
-
-
-def get_location(x, y):
-    return (y * PIXELS_PER_STRIP) + x
 
 
 class Rainbow(BaseBeamAnim):
