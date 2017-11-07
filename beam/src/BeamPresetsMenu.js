@@ -68,6 +68,19 @@ const buttonConfigs = [
     'delay': .05,
     'brightness': 255,
   },
+  {
+    'name': 'rain',
+    'animation': 'rain',
+    'delay': .25,
+    'brightness': 255,
+  },
+  {
+    'name': 'rain dots',
+    'colors': ['#9400D3', '#4B0082', '#0000FF', '#00FF00', '#FFFF00', '#FF7F00', '#FF0000'],
+    'animation': 'rain',
+    'delay': .25,
+    'brightness': 255,
+  },
 ];
 
 

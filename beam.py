@@ -33,6 +33,7 @@ class Animation(Enum):
     light = 2
     bloom = 3
     strip = 4
+    rain = 5
 
 animation_names = list(map(lambda a: a.name, list(Animation)))
 
@@ -134,9 +135,8 @@ class BaseBeamAnim(BaseMatrixAnim):
     """
     Adds some convenience methods to the base class
     """
-    def __init__(self, layout, d):
+    def __init__(self, layout):
         super().__init__(layout)
-        self.set_delay(d)
 
     def set_delay(self, d):
         if d == self.internal_delay:
@@ -170,7 +170,7 @@ class Rainbow(BaseBeamAnim):
     @adjustable
     def step(self, amt=1):
         for x, y in self.grid():
-            c = color_util.wheel.wheel_color((self._step + y) % 384)
+            c = color_util.wheel.wheel_color((self._step + x) % 384)
             self.layout.set(x, y, c)
 
         self._step += amt
@@ -218,8 +218,8 @@ class Bloom(BaseBeamAnim):
 
     name = Animation.bloom.name
 
-    def __init__(self, layout, d, dir=True):
-        super().__init__(layout, d)
+    def __init__(self, layout, dir=True):
+        super().__init__(layout)
         self._vector = genVector(self.layout.width, self.layout.height)
         self._dir = dir
 
@@ -242,12 +242,61 @@ class Bloom(BaseBeamAnim):
             self._step = 0
 
 
+class MatrixRain(BaseBeamAnim):
+    name = Animation.rain.name
+    def __init__(self, layout, tail=4, growth_rate=4):
+        super(MatrixRain, self).__init__(layout)
+        self._tail = tail
+        self._growth_rate = growth_rate
+
+    def pre_run(self):
+        self._drops = [[] for x in range(self.layout.width)]
+
+    def _draw_drop(self, y, x, color):
+        for i in range(self._tail):
+            if x - i >= 0 and x - i < self.layout.width:
+                level = 255 - ((255 // self._tail) * i)
+                self.layout.set(x - i, y, color_util.color_scale(color, level))
+
+    @check_interrupt
+    @adjustable
+    def step(self, amt=1):
+        self.layout.all_off()
+
+        for i in range(self._growth_rate):
+            new_drop = random.randint(0, self.layout.width - 1)
+            c_int = random.randint(0, len(colors) - 1)
+            self._drops[new_drop].append((0, colors[c_int]))
+
+        for y in range(self.layout.height):
+            row = self._drops[y]
+            if not row:
+                pass
+
+            removals = []
+            for x in range(len(row)):
+                drop = row[x]
+                if drop[0] < self.layout.width:
+                    self._draw_drop(y, drop[0], drop[1])
+                if drop[0] - (self._tail - 1) < self.layout.width:
+                    drop = (drop[0] + 1, drop[1])
+                    self._drops[y][x] = drop
+                else:
+                    removals.append(drop)
+
+            for r in removals:
+                self._drops[y].remove(r)
+
+        self._step = 0
+
+
 def get_new_input_class(key=None):
     animation_dict = {
         Animation.rainbow.name: Rainbow,
         Animation.light.name: Light,
         Animation.bloom.name: Bloom,
         Animation.strip.name: Strip,
+        Animation.rain.name: MatrixRain,
     }
 
     if key:
@@ -264,7 +313,7 @@ def main_loop(led):
 
     while True:
         animation_class = get_new_input_class(animation)
-        anim = animation_class(led, delay)
+        anim = animation_class(led)
         anim.set_runner(None)
 
         log.info('starting {} sequence'.format(anim.name))
@@ -282,7 +331,7 @@ if __name__ == '__main__':
     led = Matrix(
         driver,
         width=PIXELS_PER_STRIP,
-        height=2,
+        height=NUM_STRIPS,
         brightness=brightness,
         serpentine=True,
     )
