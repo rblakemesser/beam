@@ -1,7 +1,4 @@
-#!/bin/bash
+##! /bin/sh
 
-PROCS=$(ps aux | grep ngrok | wc -l)
-if [ $PROCS -lt 2 ]
-then
-    ngrok http -subdomain=blendra 5555
-fi
+ngrok start --all --config=/home/pi/.ngrok2/ngrok.yml
+
