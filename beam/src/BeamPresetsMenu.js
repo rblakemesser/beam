@@ -81,13 +81,23 @@ const buttonConfigs = [
     'delay': .25,
     'brightness': 255,
   },
+  {
+    'name': 'lava trip',
+    'animation': 'strip',
+    'colors': ['#ff0000', '#ff0000', '#ff5a00', '#ff9a00', '#ffce00', '#ffe808'],
+    'delay': .05,
+    'brightness': 255,
+  },
 ];
 
 
 class BeamPreset extends Component {
   onClick(e) {
-    fetch('http://127.0.0.1:5555/', {
+    fetch('https://blendra.ngrok.io', {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({
         animation: this.props.animation,
         colors: this.props.colors,
