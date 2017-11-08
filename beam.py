@@ -5,6 +5,7 @@ import functools
 import threading
 import itertools
 from enum import Enum
+from flask_cors import CORS
 
 import flask
 
@@ -38,6 +39,7 @@ class Animation(Enum):
 animation_names = list(map(lambda a: a.name, list(Animation)))
 
 app = flask.Flask(__name__)
+CORS(app)
 
 delay = .05
 brightness = 255
@@ -47,7 +49,7 @@ colors = [color_util.hex2rgb('#ffffff')]
 
 @app.route('/', methods=['POST'])
 def change_beam_state():
-    request_dict = json.loads(flask.request.data) if flask.request.data else flask.request.form
+    request_dict = flask.request.get_json()
 
     input_delay = request_dict.get('delay')
     if input_delay and 0.0001 <= input_delay <= 10:
@@ -325,8 +327,8 @@ def main_loop(led):
 
 
 if __name__ == '__main__':
-    driver = SimPixel.SimPixel(num=PIXELS_PER_STRIP * NUM_STRIPS)
-    # driver = Serial(num=PIXELS_PER_STRIP * NUM_STRIPS, ledtype=LEDTYPE.WS2811, c_order=ChannelOrder.GRB)
+    # driver = SimPixel.SimPixel(num=PIXELS_PER_STRIP * NUM_STRIPS)
+    driver = Serial(num=PIXELS_PER_STRIP * NUM_STRIPS, ledtype=LEDTYPE.WS2811, c_order=ChannelOrder.GRB)
 
     led = Matrix(
         driver,
