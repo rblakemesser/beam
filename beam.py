@@ -43,7 +43,7 @@ CORS(app)
 
 delay = .05
 brightness = 255
-animation = Animation.rainbow.value
+animation = Animation.light.value
 colors = [color_util.hex2rgb('#ffffff')]
 
 
@@ -327,7 +327,7 @@ def main_loop(led):
 
 
 if __name__ == '__main__':
-    # driver = SimPixel.SimPixel(num=PIXELS_PER_STRIP * NUM_STRIPS)
+    #driver = SimPixel.SimPixel(num=PIXELS_PER_STRIP * NUM_STRIPS)
     driver = Serial(num=PIXELS_PER_STRIP * NUM_STRIPS, ledtype=LEDTYPE.WS2811, c_order=ChannelOrder.GRB)
 
     led = Matrix(
