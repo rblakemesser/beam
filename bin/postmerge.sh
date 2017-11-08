@@ -2,3 +2,5 @@
 
 killall python
 
+echo "done"
+
