@@ -25,7 +25,7 @@ import bibliopixel.colors as color_util
 log.setLogLevel(log.INFO)
 
 
-PIXELS_PER_STRIP = 36
+PIXELS_PER_STRIP = 50
 NUM_STRIPS = 2
 
 
