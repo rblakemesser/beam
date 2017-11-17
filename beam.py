@@ -47,12 +47,18 @@ animation = Animation.light.value
 colors = [color_util.hex2rgb('#ffffff')]
 
 
+def _rgb_to_hex(rgb_list):
+    """Return color as #rrggbb for the given color values."""
+    red, green, blue = rgb_list
+    return '#%02x%02x%02x' % (red, green, blue)
+
+
 def _get_state():
     return {
         'brightness': brightness,
         'delay': delay,
         'animation': Animation(animation).name,
-        'colors': colors,
+        'colors': list(map(_rgb_to_hex, colors)),
     }
 
 
