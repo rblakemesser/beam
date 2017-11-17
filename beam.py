@@ -47,6 +47,20 @@ animation = Animation.light.value
 colors = [color_util.hex2rgb('#ffffff')]
 
 
+def _get_state():
+    return {
+        'brightness': brightness,
+        'delay': delay,
+        'animation': Animation(animation).name,
+        'colors': colors,
+    }
+
+
+@app.route('/', methods=['GET'])
+def get_beam_state():
+    return flask.Response(json.dumps(_get_state()), 200)
+
+
 @app.route('/', methods=['POST'])
 def change_beam_state():
     request_dict = flask.request.get_json()
@@ -78,12 +92,7 @@ def change_beam_state():
             log.info('invalid color passed')
 
     if flask.request.data:
-        response_dict = {
-            'brightness': brightness,
-            'delay': delay,
-            'animation': Animation(animation).name,
-            'colors': colors,
-        }
+        response_dict = _get_state()
 
         return flask.Response(json.dumps(response_dict), 200)
 
@@ -327,8 +336,8 @@ def main_loop(led):
 
 
 if __name__ == '__main__':
-    #driver = SimPixel.SimPixel(num=PIXELS_PER_STRIP * NUM_STRIPS)
-    driver = Serial(num=PIXELS_PER_STRIP * NUM_STRIPS, ledtype=LEDTYPE.WS2811, c_order=ChannelOrder.GRB)
+    driver = SimPixel.SimPixel(num=PIXELS_PER_STRIP * NUM_STRIPS)
+    #driver = Serial(num=PIXELS_PER_STRIP * NUM_STRIPS, ledtype=LEDTYPE.WS2811, c_order=ChannelOrder.GRB)
 
     led = Matrix(
         driver,
