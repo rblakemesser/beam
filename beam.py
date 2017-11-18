@@ -4,6 +4,7 @@ import random
 import functools
 import threading
 import itertools
+import platform
 from enum import Enum
 from flask_cors import CORS
 
@@ -342,8 +343,12 @@ def main_loop(led):
 
 
 if __name__ == '__main__':
-    driver = SimPixel.SimPixel(num=PIXELS_PER_STRIP * NUM_STRIPS)
-    #driver = Serial(num=PIXELS_PER_STRIP * NUM_STRIPS, ledtype=LEDTYPE.WS2811, c_order=ChannelOrder.GRB)
+    if platform.system() == 'Darwin':
+        # simulator on osx
+        driver = SimPixel.SimPixel(num=PIXELS_PER_STRIP * NUM_STRIPS)
+    else:
+        # hardware on pi
+        driver = Serial(num=PIXELS_PER_STRIP * NUM_STRIPS, ledtype=LEDTYPE.WS2811, c_order=ChannelOrder.GRB)
 
     led = Matrix(
         driver,
