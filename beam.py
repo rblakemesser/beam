@@ -25,8 +25,9 @@ import bibliopixel.colors as color_util
 
 log.setLogLevel(log.INFO)
 
+env = 'dev' if platform.system() == 'Darwin' else 'prod'
 
-PIXELS_PER_STRIP = 386
+PIXELS_PER_STRIP = 386 if env == 'prod' else 100
 NUM_STRIPS = 2
 
 
@@ -36,6 +37,7 @@ class Animation(Enum):
     bloom = 3
     strip = 4
     rain = 5
+    kimbow = 6
 
 animation_names = list(map(lambda a: a.name, list(Animation)))
 
@@ -73,12 +75,12 @@ def change_beam_state():
     request_dict = flask.request.get_json()
 
     input_delay = request_dict.get('delay')
-    if input_delay and 0.0001 <= input_delay <= 10:
+    if input_delay is not None and 0.0001 <= input_delay <= 10:
         global delay
         delay = input_delay
 
     input_brightness = request_dict.get('brightness')
-    if input_brightness and 0 <= input_brightness <= 255:
+    if input_brightness is not None and 0 <= input_brightness <= 255:
         global brightness
         brightness = input_brightness
 
@@ -179,6 +181,19 @@ class BaseBeamAnim(BaseMatrixAnim):
             range(self.layout.height),
         )
         return points
+
+
+class Kimbow(BaseBeamAnim):
+    name = Animation.kimbow.name
+
+    @check_interrupt
+    @adjustable
+    def step(self, amt=1):
+        for x, y in self.grid():
+            c = color_util.wheel.wheel_color((self._step + x + y) % 384)
+            self.layout.set(x, y, c)
+
+        self._step += amt
 
 
 class Rainbow(BaseBeamAnim):
@@ -315,6 +330,7 @@ def get_new_input_class(key=None):
         Animation.bloom.name: Bloom,
         Animation.strip.name: Strip,
         Animation.rain.name: MatrixRain,
+        Animation.kimbow.name: Kimbow,
     }
 
     if key:
@@ -343,7 +359,7 @@ def main_loop(led):
 
 
 if __name__ == '__main__':
-    if platform.system() == 'Darwin':
+    if env == 'dev':
         # simulator on osx
         driver = SimPixel.SimPixel(num=PIXELS_PER_STRIP * NUM_STRIPS)
     else:
