@@ -27,7 +27,7 @@ log.setLogLevel(log.INFO)
 
 env = 'dev' if platform.system() == 'Darwin' else 'prod'
 
-PIXELS_PER_STRIP = 386 if env == 'prod' else 100
+PIXELS_PER_STRIP = 286 if env == 'prod' else 100
 NUM_STRIPS = 2
 
 
