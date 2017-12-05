@@ -1,3 +1,4 @@
+import os
 import json
 import ctypes
 import random
@@ -25,10 +26,15 @@ import bibliopixel.colors as color_util
 
 log.setLogLevel(log.INFO)
 
-env = 'dev' if platform.system() == 'Darwin' else 'prod'
+if os.path.exists('.env'):
+    with open('.env') as fhandle:
+        config = json.loads(fhandle.read())
 
-PIXELS_PER_STRIP = 286 if env == 'prod' else 100
-NUM_STRIPS = 2
+    os.environ.update(config)
+
+PIXELS_PER_STRIP = int(os.environ.get('PIXELS_PER_STRIP', "60"))
+NUM_STRIPS = int(os.environ.get('NUM_STRIPS', "2"))
+ENV = os.environ.get('ENV', 'dev')
 
 
 class Animation(Enum):
@@ -45,7 +51,7 @@ app = flask.Flask(__name__)
 CORS(app)
 
 delay = .05
-brightness = 255
+brightness = 0
 animation = Animation.light.value
 colors = [color_util.hex2rgb('#ffffff')]
 
@@ -359,9 +365,11 @@ def main_loop(led):
 
 
 if __name__ == '__main__':
-    if env == 'dev':
+
+    if ENV == 'dev':
         # simulator on osx
         driver = SimPixel.SimPixel(num=PIXELS_PER_STRIP * NUM_STRIPS)
+
     else:
         # hardware on pi
         driver = Serial(num=PIXELS_PER_STRIP * NUM_STRIPS, ledtype=LEDTYPE.WS2811, c_order=ChannelOrder.GRB)
