@@ -51,8 +51,8 @@ app = flask.Flask(__name__)
 CORS(app)
 
 delay = .05
-brightness = 0
-animation = Animation.light.value
+brightness = 200
+animation = Animation.rainbow.value
 colors = [color_util.hex2rgb('#ffffff')]
 
 
@@ -199,7 +199,10 @@ class Kimbow(BaseBeamAnim):
             c = color_util.wheel.wheel_color((self._step + x + y) % 384)
             self.layout.set(x, y, c)
 
-        self._step += amt
+        if self._step + amt == 384:
+            self._step = 0
+        else:
+            self._step += amt
 
 
 class Rainbow(BaseBeamAnim):
@@ -212,7 +215,10 @@ class Rainbow(BaseBeamAnim):
             c = color_util.wheel.wheel_color((self._step + x) % 384)
             self.layout.set(x, y, c)
 
-        self._step += amt
+        if self._step + amt == 384:
+            self._step = 0
+        else:
+            self._step += amt
 
 
 class Light(BaseBeamAnim):
