@@ -6,7 +6,8 @@ import functools
 import threading
 import itertools
 import platform
-from enum import Enum
+import enum
+
 from flask_cors import CORS
 
 import flask
@@ -37,82 +38,23 @@ NUM_STRIPS = int(os.environ.get('NUM_STRIPS', "2"))
 ENV = os.environ.get('ENV', 'dev')
 
 
-class Animation(Enum):
-    rainbow = 1
-    light = 2
-    bloom = 3
-    strip = 4
-    rain = 5
-    kimbow = 6
-
-animation_names = list(map(lambda a: a.name, list(Animation)))
-
 app = flask.Flask(__name__)
 CORS(app)
 
 delay = .05
 brightness = 200
-animation = Animation.rainbow.value
+animation = "rainbow"
 colors = [color_util.hex2rgb('#ffffff')]
 
-
-def _rgb_to_hex(rgb_list):
-    """Return color as #rrggbb for the given color values."""
-    red, green, blue = rgb_list
-    return '#%02x%02x%02x' % (red, green, blue)
+animation_dict = {}
 
 
-def _get_state():
-    return {
-        'brightness': brightness,
-        'delay': delay,
-        'animation': Animation(animation).name,
-        'colors': list(map(_rgb_to_hex, colors)),
-    }
-
-
-@app.route('/', methods=['GET'])
-def get_beam_state():
-    return flask.Response(json.dumps(_get_state()), 200)
-
-
-@app.route('/', methods=['POST'])
-def change_beam_state():
-    request_dict = flask.request.get_json()
-
-    input_delay = request_dict.get('delay')
-    if input_delay is not None and 0.0001 <= input_delay <= 10:
-        global delay
-        delay = input_delay
-
-    input_brightness = request_dict.get('brightness')
-    if input_brightness is not None and 0 <= input_brightness <= 255:
-        global brightness
-        brightness = input_brightness
-
-    input_animation = request_dict.get('animation')
-    if input_animation in animation_names:
-        global animation
-        animation = Animation[input_animation].value
-    else:
-        log.info('unknown animation: {}'.format(input_animation))
-
-    input_colors = request_dict.get('colors', [])
-    if input_colors:
-        try:
-            input_colors = list(map(color_util.hex2rgb, input_colors))
-            global colors
-            colors = input_colors
-        except KeyError:
-            log.info('invalid color passed')
-
-    if flask.request.data:
-        response_dict = _get_state()
-
-        return flask.Response(json.dumps(response_dict), 200)
-
-    else:
-        return flask.redirect('/')
+class AnimationMeta(type):
+    def __new__(meta, name, bases, dct):
+        return super(AnimationMeta, meta).__new__(meta, name, bases, dct)
+    def __init__(cls, name, bases, dct):
+        animation_dict[cls.name] = cls
+        return super(AnimationMeta, cls).__init__(name, bases, dct)
 
 
 class Interrupt(Exception):
@@ -125,8 +67,7 @@ def check_interrupt(fn):
     """
     @functools.wraps(fn)
     def wrapped(self, *args, **kwargs):
-        if animation and Animation(animation).name != self.name:
-            log.info('changing from {} to {}'.format(self.name, Animation(animation).name))
+        if animation and animation != self.name:
             raise Interrupt('changing sequence')
 
         return fn(self, *args, **kwargs)
@@ -161,6 +102,7 @@ class BaseBeamAnim(BaseMatrixAnim):
     """
     Adds some convenience methods to the base class
     """
+
     def __init__(self, layout):
         super().__init__(layout)
 
@@ -189,8 +131,8 @@ class BaseBeamAnim(BaseMatrixAnim):
         return points
 
 
-class Kimbow(BaseBeamAnim):
-    name = Animation.kimbow.name
+class TheaterChaseRainbow(BaseBeamAnim, metaclass=AnimationMeta):
+    name = "theater_chase_rainbow"
 
     @check_interrupt
     @adjustable
@@ -205,8 +147,8 @@ class Kimbow(BaseBeamAnim):
             self._step += amt
 
 
-class Rainbow(BaseBeamAnim):
-    name = Animation.rainbow.name
+class Rainbow(BaseBeamAnim, metaclass=AnimationMeta):
+    name = "rainbow"
 
     @check_interrupt
     @adjustable
@@ -221,13 +163,13 @@ class Rainbow(BaseBeamAnim):
             self._step += amt
 
 
-class Light(BaseBeamAnim):
+class Light(BaseBeamAnim, metaclass=AnimationMeta):
     """
     With one color, the strip is a single-colored light. With multiple,
     the colors just alternate along the strip (but are not animated).
     """
 
-    name = Animation.light.name
+    name = "light"
 
     @check_interrupt
     @adjustable
@@ -236,32 +178,36 @@ class Light(BaseBeamAnim):
             c = colors[get_location(x, y) % len(colors)]
             self.layout.set(x, y, c)
 
-        self._step += amt
+        self._step = 0
 
 
-class Strip(BaseBeamAnim):
+class Strip(BaseBeamAnim, metaclass=AnimationMeta):
     """
     Alternate the list of colors down the strip.
     """
 
-    name = Animation.strip.name
+    name = "strip"
 
     @check_interrupt
     @adjustable
     def step(self, amt=1):
+        color_length = len(colors)
         for x, y in self.grid():
-            col_color = colors[(get_location(x, y) + self._step) % len(colors)]
+            col_color = colors[(get_location(x, y) + self._step) % color_length]
             self.layout.set(x, y, col_color)
 
-        self._step += amt
+        if self._step + amt == color_length:
+            self._step = 0
+        else:
+            self._step += amt
 
 
-class Bloom(BaseBeamAnim):
+class Bloom(BaseBeamAnim, metaclass=AnimationMeta):
     """
     Adapted from Maniacal labs animation lib
     """
 
-    name = Animation.bloom.name
+    name = "bloom"
 
     def __init__(self, layout, dir=True):
         super().__init__(layout)
@@ -287,8 +233,9 @@ class Bloom(BaseBeamAnim):
             self._step = 0
 
 
-class MatrixRain(BaseBeamAnim):
-    name = Animation.rain.name
+class MatrixRain(BaseBeamAnim, metaclass=AnimationMeta):
+    name = "rain"
+
     def __init__(self, layout, tail=4, growth_rate=4):
         super(MatrixRain, self).__init__(layout)
         self._tail = tail
@@ -335,19 +282,12 @@ class MatrixRain(BaseBeamAnim):
         self._step = 0
 
 
-def get_new_input_class(key=None):
-    animation_dict = {
-        Animation.rainbow.name: Rainbow,
-        Animation.light.name: Light,
-        Animation.bloom.name: Bloom,
-        Animation.strip.name: Strip,
-        Animation.rain.name: MatrixRain,
-        Animation.kimbow.name: Kimbow,
-    }
+Animation = enum.Enum('Animation', ' '.join(animation_dict.keys()))
 
+
+def get_new_input_class(key=None):
     if key:
-        animation_name = Animation(key).name
-        return animation_dict[animation_name]
+        return animation_dict[key]
 
     vals = list(animation_dict.values())
     return random.choice(vals)
@@ -368,6 +308,65 @@ def main_loop(led):
             anim.run_all_frames()
         except Interrupt:
             pass
+
+
+def _rgb_to_hex(rgb_list):
+    """Return color as #rrggbb for the given color values."""
+    red, green, blue = rgb_list
+    return '#%02x%02x%02x' % (red, green, blue)
+
+
+def _get_state():
+    return {
+        'brightness': brightness,
+        'delay': delay,
+        'animation': animation,
+        'colors': list(map(_rgb_to_hex, colors)),
+    }
+
+
+@app.route('/', methods=['GET'])
+def get_beam_state():
+    return flask.Response(json.dumps(_get_state()), 200)
+
+
+@app.route('/', methods=['POST'])
+def change_beam_state():
+    request_dict = flask.request.get_json()
+
+    input_delay = request_dict.get('delay')
+    if input_delay is not None and 0.0001 <= input_delay <= 10:
+        global delay
+        delay = input_delay
+
+    input_brightness = request_dict.get('brightness')
+    if input_brightness is not None and 0 <= input_brightness <= 255:
+        global brightness
+        brightness = input_brightness
+
+    input_animation = request_dict.get('animation')
+    if input_animation in animation_dict.keys():
+        global animation
+        animation = input_animation
+    else:
+        log.info('unknown animation: {}'.format(input_animation))
+
+    input_colors = request_dict.get('colors', [])
+    if input_colors:
+        try:
+            input_colors = list(map(color_util.hex2rgb, input_colors))
+            global colors
+            colors = input_colors
+        except KeyError:
+            log.info('invalid color passed')
+
+    if flask.request.data:
+        response_dict = _get_state()
+
+        return flask.Response(json.dumps(response_dict), 200)
+
+    else:
+        return flask.redirect('/')
 
 
 if __name__ == '__main__':
