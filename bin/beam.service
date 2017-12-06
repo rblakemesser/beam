@@ -1,0 +1,14 @@
+# beam.service
+
+[Unit]
+Description=Beam Service
+After=multi-user.target
+ 
+[Service]
+Type=simple
+ExecStart=/home/pi/workspace/beam/venv/bin/python /home/pi/workspace/beam/beam.py
+Restart=on-abort
+ 
+[Install]
+WantedBy=multi-user.target
+
