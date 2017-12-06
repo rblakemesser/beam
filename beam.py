@@ -221,11 +221,13 @@ class Zap(BaseBeamAnim):
                 self.layout.set(x, y, color_util.color_scale(self.color, brightness))
 
         if bullet_pos + 1 >= PIXELS_PER_STRIP + tail_len:
-            # Sequence is about to end; Choose another color for the next ZAP
+            # Sequence is about to end; Reset the Zap!
             c_int = random.randint(0, len(colors) - 1)
             self.color = color = colors[c_int]
+            self._step = 0
+        else:
+            self._step += amt
 
-        self._step += amt
 
 
 class Rainbow(BaseBeamAnim):
