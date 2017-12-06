@@ -396,7 +396,7 @@ class Bloom(BaseBeamAnim):
             self._step = 0
 
 
-class MatrixRain(BaseBeamAnim):
+class Rain(BaseBeamAnim):
 
     def __init__(self, layout, tail=4, growth_rate=4):
         super().__init__(layout)
