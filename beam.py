@@ -42,9 +42,10 @@ app = flask.Flask(__name__)
 CORS(app)
 
 delay = .05
-brightness = 200
-animation = "rainbow"
-colors = [color_util.hex2rgb('#ffffff')]
+brightness = 255
+animation = "color_wipe_rotate"
+colors = ['#ff0000', '#00ff00', '#0000ff']
+colors = list(map(color_util.hex2rgb, colors))
 
 animation_dict = {}
 
@@ -84,6 +85,9 @@ def adjustable(fn):
     def wrapped(self, *args, **kwargs):
         self.set_delay(delay)
         self.set_brightness(brightness)
+
+        if self._step > 10000000:
+            self._step = 0
 
         return fn(self, *args, **kwargs)
 
@@ -131,17 +135,38 @@ class BaseBeamAnim(BaseMatrixAnim):
         return points
 
 
-class TheaterChaseRainbow(BaseBeamAnim, metaclass=AnimationMeta):
-    name = "theater_chase_rainbow"
+class ColorWipeLength(BaseBeamAnim, metaclass=AnimationMeta):
+    name = "color_wipe_rotate"
 
     @check_interrupt
     @adjustable
     def step(self, amt=1):
         for x, y in self.grid():
-            c = color_util.wheel.wheel_color((self._step + x + y) % 384)
-            self.layout.set(x, y, c)
+            if self._step - PIXELS_PER_STRIP < x < self._step:
+                self.layout.set(x, y, random.choice(colors))
+            else:
+                self.layout.set(x, y, (0, 0, 0))
 
-        if self._step + amt == 384:
+
+        if self._step >= 2 * PIXELS_PER_STRIP:
+            self._step = 0
+        else:
+            self._step += amt
+
+
+class ColorWipeSequential(BaseBeamAnim, metaclass=AnimationMeta):
+    name = "color_wipe_sequential"
+
+    @check_interrupt
+    @adjustable
+    def step(self, amt=1):
+        for x, y in self.grid():
+            if get_location(x, y) < self._step:
+                self.layout.set(x, y, random.choice(colors))
+            else:
+                self.layout.set(x, y, (0, 0, 0))
+
+        if self._step == PIXELS_PER_STRIP * NUM_STRIPS:
             self._step = 0
         else:
             self._step += amt
@@ -270,7 +295,7 @@ class MatrixRain(BaseBeamAnim, metaclass=AnimationMeta):
     name = "rain"
 
     def __init__(self, layout, tail=4, growth_rate=4):
-        super(MatrixRain, self).__init__(layout)
+        super().__init__(layout)
         self._tail = tail
         self._growth_rate = growth_rate
 
