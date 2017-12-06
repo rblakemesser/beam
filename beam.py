@@ -44,6 +44,7 @@ class Animation(Enum):
     strip = 4
     rain = 5
     kimbow = 6
+    zap = 7
 
 animation_names = list(map(lambda a: a.name, list(Animation)))
 
@@ -205,6 +206,39 @@ class Kimbow(BaseBeamAnim):
             self._step += amt
 
 
+class Zap(BaseBeamAnim):
+    name = Animation.zap.name
+
+    def __init__(self, layout, dir=True):
+        super().__init__(layout)
+
+        # First color
+        c_int = random.randint(0, len(colors) - 1)
+        self.color = color = colors[c_int]
+
+    @check_interrupt
+    @adjustable
+    def step(self, amt=1):
+        self.layout.all_off()
+
+        tail_len = 40 # Whatever
+        bullet_pos = self._step % (PIXELS_PER_STRIP + tail_len)
+
+        for x, y in self.grid():
+            if x <= bullet_pos and x > bullet_pos - tail_len:
+                brightness = 255 - ((bullet_pos - x) * (255 / tail_len))
+                self.layout.set(x, y, color_util.color_scale(self.color, brightness))
+
+        if bullet_pos + 1 >= PIXELS_PER_STRIP + tail_len:
+            # Sequence is about to end; Reset the Zap!
+            c_int = random.randint(0, len(colors) - 1)
+            self.color = color = colors[c_int]
+            self._step = 0
+        else:
+            self._step += amt
+
+
+
 class Rainbow(BaseBeamAnim):
     name = Animation.rainbow.name
 
@@ -343,6 +377,7 @@ def get_new_input_class(key=None):
         Animation.strip.name: Strip,
         Animation.rain.name: MatrixRain,
         Animation.kimbow.name: Kimbow,
+        Animation.zap.name: Zap,
     }
 
     if key:
