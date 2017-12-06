@@ -1,4 +1,5 @@
 import os
+import time
 import json
 import ctypes
 import random
@@ -17,13 +18,12 @@ from bibliopixel.layout import Matrix
 from bibliopixel.drivers import SimPixel
 from bibliopixel.animation.matrix import BaseMatrixAnim
 from bibliopixel.animation.animation import STATE
-from bibliopixel.util import genVector
+from bibliopixel.util import genVector, pointOnCircle
 from bibliopixel.animation import MatrixCalibrationTest
 
 from bibliopixel.drivers.serial import Serial, LEDTYPE
 from bibliopixel.drivers.channel_order import ChannelOrder
 import bibliopixel.colors as color_util
-
 
 log.setLogLevel(log.INFO)
 
@@ -52,7 +52,7 @@ animation_dict = {}
 
 class AnimationMeta(type):
     def __init__(cls, name, bases, dct):
-        # TODO a little brittle
+        # a little brittle
         if 'BaseBeamAnim' in map(lambda b: b.__name__, bases):
             animation_dict[cls.__name__] = cls
 
@@ -136,6 +136,59 @@ class BaseBeamAnim(BaseMatrixAnim, metaclass=AnimationMeta):
         return points
 
 
+class LangtonsAnt(BaseBeamAnim):
+
+    def __init__(self, layout):
+        super().__init__(layout)
+        self.offColor = color_util.Off
+        self.curColor = self.offColor
+
+    def pre_run(self):
+        self.x = random.randrange(self.width)
+        self.y = random.randrange(self.height)
+        self.d = random.randrange(4)
+
+    def __rollValue(self, val, step, _min, _max):
+        val += step
+        if val < _min:
+            diff = _min - val
+            val = _max - diff + 1
+        elif val > _max:
+            diff = val - _max
+            val = _min + diff - 1
+        return val
+
+    def __changeDir(self, direction):
+        direction = random.choice([1, -1])
+        self.d = self.__rollValue(self.d, direction, 0, 3)
+
+    def __moveAnt(self):
+        if self.d == 0:
+            self.y = self.__rollValue(self.y, 1, 0, self.height - 1)
+        elif self.d == 1:
+            self.x = self.__rollValue(self.x, 1, 0, self.width - 1)
+        elif self.d == 2:
+            self.y = self.__rollValue(self.y, -1, 0, self.height - 1)
+        elif self.d == 3:
+            self.x = self.__rollValue(self.x, -1, 0, self.width - 1)
+
+        self.curColor = self.layout.get(self.x, self.y)
+        self.layout.set(self.x, self.y, colors[0])
+
+    @check_interrupt
+    @adjustable
+    def step(self, amt=1):
+        pathColors = colors[1:] if len(colors) > 1 else [color_util.Green]
+        if self.curColor in pathColors:
+            self.layout.set(self.x, self.y, self.offColor)
+            self.__changeDir(False)
+            self.__moveAnt()
+        else:
+            self.layout.set(self.x, self.y, random.choice(pathColors))
+            self.__changeDir(True)
+            self.__moveAnt()
+
+
 class ColorWipeRotate(BaseBeamAnim):
 
     @check_interrupt
@@ -145,7 +198,7 @@ class ColorWipeRotate(BaseBeamAnim):
             if self._step - PIXELS_PER_STRIP < x < self._step:
                 self.layout.set(x, y, random.choice(colors))
             else:
-                self.layout.set(x, y, (0, 0, 0))
+                self.layout.set(x, y, color_util.Off)
 
         if self._step >= 2 * (PIXELS_PER_STRIP - 1):
             self._step = 0
@@ -162,7 +215,7 @@ class ColorWipeSequential(BaseBeamAnim):
             if get_location(x, y) < self._step:
                 self.layout.set(x, y, random.choice(colors))
             else:
-                self.layout.set(x, y, (0, 0, 0))
+                self.layout.set(x, y, color_util.Off)
 
         if self._step == PIXELS_PER_STRIP * NUM_STRIPS:
             self._step = 0
@@ -479,6 +532,20 @@ def change_beam_state():
 
 
 if __name__ == '__main__':
+
+    from argparse import ArgumentParser
+    parser = ArgumentParser()
+    parser.add_argument('--animation', '-a')
+    parser.add_argument('--delay', '-d', type=float)
+    parser.add_argument('--brightness', '-b', type=int)
+    args = parser.parse_args()
+
+    if args.animation:
+        animation = args.animation
+    if args.brightness:
+        brightness = args.brightness
+    if args.delay:
+        delay = args.delay
 
     if ENV == 'dev':
         # simulator on osx
