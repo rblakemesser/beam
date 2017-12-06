@@ -212,7 +212,7 @@ class Zap(BaseBeamAnim):
     def step(self, amt=1):
         self.layout.all_off()
 
-        tail_len = 40
+        tail_len = 40 # Whatever
         bullet_pos = self._step % (PIXELS_PER_STRIP + tail_len)
 
         for x, y in self.grid():
@@ -221,6 +221,7 @@ class Zap(BaseBeamAnim):
                 self.layout.set(x, y, color_util.color_scale(self.color, brightness))
 
         if bullet_pos + 1 >= PIXELS_PER_STRIP + tail_len:
+            # Sequence is about to end; Choose another color for the next ZAP
             c_int = random.randint(0, len(colors) - 1)
             self.color = color = colors[c_int]
 
