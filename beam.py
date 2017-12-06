@@ -43,7 +43,7 @@ CORS(app)
 
 delay = .05
 brightness = 255
-animation = "color_wipe_rotate"
+animation = "ColorWipeRotate"
 colors = ['#ff0000', '#00ff00', '#0000ff']
 colors = list(map(color_util.hex2rgb, colors))
 
@@ -51,10 +51,11 @@ animation_dict = {}
 
 
 class AnimationMeta(type):
-    def __new__(meta, name, bases, dct):
-        return super(AnimationMeta, meta).__new__(meta, name, bases, dct)
     def __init__(cls, name, bases, dct):
-        animation_dict[cls.name] = cls
+        # TODO a little brittle
+        if 'BaseBeamAnim' in map(lambda b: b.__name__, bases):
+            animation_dict[cls.__name__] = cls
+
         return super(AnimationMeta, cls).__init__(name, bases, dct)
 
 
@@ -68,7 +69,7 @@ def check_interrupt(fn):
     """
     @functools.wraps(fn)
     def wrapped(self, *args, **kwargs):
-        if animation and animation != self.name:
+        if animation and animation != self.__class__.__name__:
             raise Interrupt('changing sequence')
 
         return fn(self, *args, **kwargs)
@@ -102,7 +103,7 @@ def get_location(x, y):
     return (y * PIXELS_PER_STRIP) + x
 
 
-class BaseBeamAnim(BaseMatrixAnim):
+class BaseBeamAnim(BaseMatrixAnim, metaclass=AnimationMeta):
     """
     Adds some convenience methods to the base class
     """
@@ -135,8 +136,7 @@ class BaseBeamAnim(BaseMatrixAnim):
         return points
 
 
-class ColorWipeLength(BaseBeamAnim, metaclass=AnimationMeta):
-    name = "color_wipe_rotate"
+class ColorWipeRotate(BaseBeamAnim):
 
     @check_interrupt
     @adjustable
@@ -147,15 +147,13 @@ class ColorWipeLength(BaseBeamAnim, metaclass=AnimationMeta):
             else:
                 self.layout.set(x, y, (0, 0, 0))
 
-
-        if self._step >= 2 * PIXELS_PER_STRIP:
+        if self._step >= 2 * (PIXELS_PER_STRIP - 1):
             self._step = 0
         else:
             self._step += amt
 
 
-class ColorWipeSequential(BaseBeamAnim, metaclass=AnimationMeta):
-    name = "color_wipe_sequential"
+class ColorWipeSequential(BaseBeamAnim):
 
     @check_interrupt
     @adjustable
@@ -172,8 +170,7 @@ class ColorWipeSequential(BaseBeamAnim, metaclass=AnimationMeta):
             self._step += amt
 
 
-class Zap(BaseBeamAnim, metaclass=AnimationMeta):
-    name = "zap"
+class Zap(BaseBeamAnim):
 
     def __init__(self, layout, dir=True):
         super().__init__(layout)
@@ -204,9 +201,70 @@ class Zap(BaseBeamAnim, metaclass=AnimationMeta):
             self._step += amt
 
 
+class Twinkle(BaseBeamAnim):
 
-class Rainbow(BaseBeamAnim, metaclass=AnimationMeta):
-    name = "rainbow"
+    def __init__(self, layout, dir=True):
+        super().__init__(layout)
+
+        self.layout = layout
+        self.colors = colors
+        self.density = 20
+        self.speed = 2
+        self.max_bright = 255
+
+        # Make sure speed, density & max_bright are in sane ranges
+        self.speed = min(self.speed, 100)
+        self.speed = max(self.speed, 2)
+        self.density = min(self.density, 100)
+        self.density = max(self.density, 2)
+        self.max_bright = min(self.max_bright, 255)
+        self.max_bright = max(self.max_bright, 5)
+
+    def pre_run(self):
+        self._step = 0
+        # direction, color, level
+        self.pixels = [(0, color_util.Off, 0)] * self.layout.numLEDs
+
+    def pick_led(self, speed):
+        idx = random.randrange(0, self.layout.numLEDs)
+        p_dir, p_color, p_level = self.pixels[idx]
+
+        if random.randrange(0, 100) < self.density:
+            if p_dir == 0:  # 0 is off
+                p_level += speed
+                p_dir = 1  # 1 is growing
+                p_color = random.choice(self.colors)
+                self.layout._set_base(idx, color_util.color_scale(p_color, p_level))
+
+                self.pixels[idx] = p_dir, p_color, p_level
+
+    @check_interrupt
+    @adjustable
+    def step(self, amt=1):
+        self.layout.all_off()
+        self.pick_led(self.speed)
+
+        for i, val in enumerate(self.pixels):
+            p_dir, p_color, p_level = val
+            if p_dir == 1:
+                p_level += self.speed
+                if p_level > 255:
+                    p_level = 255
+                    p_dir = 2  # start dimming
+                self.layout._set_base(i, color_util.color_scale(p_color, p_level))
+            elif p_dir == 2:
+                p_level -= self.speed
+                if p_level < 0:
+                    p_level = 0
+                    p_dir = 0  # turn off
+                self.layout._set_base(i, color_util.color_scale(p_color, p_level))
+
+            self.pixels[i] = (p_dir, p_color, p_level)
+
+        self._step += amt
+
+
+class Rainbow(BaseBeamAnim):
 
     @check_interrupt
     @adjustable
@@ -221,13 +279,11 @@ class Rainbow(BaseBeamAnim, metaclass=AnimationMeta):
             self._step += amt
 
 
-class Light(BaseBeamAnim, metaclass=AnimationMeta):
+class Light(BaseBeamAnim):
     """
     With one color, the strip is a single-colored light. With multiple,
     the colors just alternate along the strip (but are not animated).
     """
-
-    name = "light"
 
     @check_interrupt
     @adjustable
@@ -239,12 +295,10 @@ class Light(BaseBeamAnim, metaclass=AnimationMeta):
         self._step = 0
 
 
-class Strip(BaseBeamAnim, metaclass=AnimationMeta):
+class Strip(BaseBeamAnim):
     """
     Alternate the list of colors down the strip.
     """
-
-    name = "strip"
 
     @check_interrupt
     @adjustable
@@ -260,12 +314,10 @@ class Strip(BaseBeamAnim, metaclass=AnimationMeta):
             self._step += amt
 
 
-class Bloom(BaseBeamAnim, metaclass=AnimationMeta):
+class Bloom(BaseBeamAnim):
     """
     Adapted from Maniacal labs animation lib
     """
-
-    name = "bloom"
 
     def __init__(self, layout, dir=True):
         super().__init__(layout)
@@ -291,8 +343,7 @@ class Bloom(BaseBeamAnim, metaclass=AnimationMeta):
             self._step = 0
 
 
-class MatrixRain(BaseBeamAnim, metaclass=AnimationMeta):
-    name = "rain"
+class MatrixRain(BaseBeamAnim):
 
     def __init__(self, layout, tail=4, growth_rate=4):
         super().__init__(layout)
@@ -360,7 +411,7 @@ def main_loop(led):
         anim = animation_class(led)
         anim.set_runner(None)
 
-        log.info('starting {} sequence'.format(anim.name))
+        log.info('starting {} sequence'.format(anim.__class__.__name__))
 
         try:
             anim.run_all_frames()
