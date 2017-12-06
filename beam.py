@@ -98,10 +98,11 @@ def get_location(x, y):
     return (y * PIXELS_PER_STRIP) + x
 
 
-class BaseBeamAnim(BaseMatrixAnim):
+class BaseBeamAnim(BaseMatrixAnim, metaclass=AnimationMeta):
     """
     Adds some convenience methods to the base class
     """
+    name = "base"
 
     def __init__(self, layout):
         super().__init__(layout)
@@ -131,7 +132,7 @@ class BaseBeamAnim(BaseMatrixAnim):
         return points
 
 
-class TheaterChaseRainbow(BaseBeamAnim, metaclass=AnimationMeta):
+class TheaterChaseRainbow(BaseBeamAnim):
     name = "theater_chase_rainbow"
 
     @check_interrupt
@@ -147,7 +148,7 @@ class TheaterChaseRainbow(BaseBeamAnim, metaclass=AnimationMeta):
             self._step += amt
 
 
-class Zap(BaseBeamAnim, metaclass=AnimationMeta):
+class Zap(BaseBeamAnim):
     name = "zap"
 
     def __init__(self, layout, dir=True):
@@ -179,7 +180,7 @@ class Zap(BaseBeamAnim, metaclass=AnimationMeta):
             self._step += amt
 
 
-class Twinkle(BaseBeamAnim, metaclass=AnimationMeta):
+class Twinkle(BaseBeamAnim):
     name = "twinkle"
 
     def __init__(self, layout, dir=True):
@@ -243,7 +244,7 @@ class Twinkle(BaseBeamAnim, metaclass=AnimationMeta):
         self._step += amt
 
 
-class Rainbow(BaseBeamAnim, metaclass=AnimationMeta):
+class Rainbow(BaseBeamAnim):
     name = "rainbow"
 
     @check_interrupt
@@ -259,7 +260,7 @@ class Rainbow(BaseBeamAnim, metaclass=AnimationMeta):
             self._step += amt
 
 
-class Light(BaseBeamAnim, metaclass=AnimationMeta):
+class Light(BaseBeamAnim):
     """
     With one color, the strip is a single-colored light. With multiple,
     the colors just alternate along the strip (but are not animated).
@@ -277,7 +278,7 @@ class Light(BaseBeamAnim, metaclass=AnimationMeta):
         self._step = 0
 
 
-class Strip(BaseBeamAnim, metaclass=AnimationMeta):
+class Strip(BaseBeamAnim):
     """
     Alternate the list of colors down the strip.
     """
@@ -298,7 +299,7 @@ class Strip(BaseBeamAnim, metaclass=AnimationMeta):
             self._step += amt
 
 
-class Bloom(BaseBeamAnim, metaclass=AnimationMeta):
+class Bloom(BaseBeamAnim):
     """
     Adapted from Maniacal labs animation lib
     """
@@ -329,7 +330,7 @@ class Bloom(BaseBeamAnim, metaclass=AnimationMeta):
             self._step = 0
 
 
-class MatrixRain(BaseBeamAnim, metaclass=AnimationMeta):
+class MatrixRain(BaseBeamAnim):
     name = "rain"
 
     def __init__(self, layout, tail=4, growth_rate=4):
