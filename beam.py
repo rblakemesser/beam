@@ -27,8 +27,13 @@ import bibliopixel.colors as color_util
 
 log.setLogLevel(log.INFO)
 
-if os.path.exists('.env'):
-    with open('.env') as fhandle:
+
+env_path = '/home/workspace/pi/.env'
+if not os.path.exists(env_path):
+    env_path = '.env'
+
+if os.path.exists(env_path):
+    with open(env_path) as fhandle:
         config = json.loads(fhandle.read())
 
     os.environ.update(config)
