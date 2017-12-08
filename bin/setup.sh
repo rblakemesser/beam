@@ -7,6 +7,8 @@ sudo systemctl daemon-reload
 sudo systemctl enable beam
 sudo systemctl start beam
 
+cp bin/postmerge.sh .git/hooks/post-merge
+
 # Other interesting commands:
 # sudo systemctl status beam
 # sudo systemctl start beam
