@@ -28,7 +28,7 @@ import bibliopixel.colors as color_util
 log.setLogLevel(log.INFO)
 
 
-env_path = '/home/workspace/pi/.env'
+env_path = '/home/pi/workspace/beam/.env'
 if not os.path.exists(env_path):
     env_path = '.env'
 
