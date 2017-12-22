@@ -1,4 +1,5 @@
 import os
+import math
 import time
 import json
 import ctypes
@@ -25,31 +26,17 @@ from bibliopixel.drivers.serial import Serial, LEDTYPE
 from bibliopixel.drivers.channel_order import ChannelOrder
 import bibliopixel.colors as color_util
 
+from config import config
+
 log.setLogLevel(log.INFO)
-
-
-env_path = '/home/pi/workspace/beam/.env'
-if not os.path.exists(env_path):
-    env_path = '.env'
-
-if os.path.exists(env_path):
-    with open(env_path) as fhandle:
-        config = json.loads(fhandle.read())
-
-    os.environ.update(config)
-
-PIXELS_PER_STRIP = int(os.environ.get('PIXELS_PER_STRIP', "60"))
-NUM_STRIPS = int(os.environ.get('NUM_STRIPS', "2"))
-ENV = os.environ.get('ENV', 'dev')
-
 
 app = flask.Flask(__name__)
 CORS(app)
 
-delay = .05
-brightness = 255
-animation = "ColorWipeRotate"
-colors = ['#ff0000', '#00ff00', '#0000ff']
+delay = config.initial_delay
+brightness = config.initial_brightness
+animation = config.initial_animation
+colors = config.initial_colors or ['#ff0000', '#00ff00', '#0000ff']
 colors = list(map(color_util.hex2rgb, colors))
 
 animation_dict = {}
@@ -107,7 +94,7 @@ def get_location(x, y):
     Given x, y coordinates of a location, yield its ordinal position.
     Sometimes useful in step() functions.
     """
-    return (y * PIXELS_PER_STRIP) + x
+    return (y * config.pixels_per_strip) + x
 
 
 class BaseBeamAnim(BaseMatrixAnim, metaclass=AnimationMeta):
@@ -550,22 +537,22 @@ if __name__ == '__main__':
     if args.animation:
         animation = args.animation
     if args.brightness:
-        brightness = args.brightness
+        brightness = math.floor(args.brightness * (config.max_brightness / 255.))
     if args.delay:
         delay = args.delay
 
-    if ENV == 'dev':
+    num_pixels = config.pixels_per_strip * config.num_strips
+    if config.driver == 'sim':
         # simulator on osx
-        driver = SimPixel.SimPixel(num=PIXELS_PER_STRIP * NUM_STRIPS)
-
+        driver = SimPixel.SimPixel(num=num_pixels)
     else:
         # hardware on pi
-        driver = Serial(num=PIXELS_PER_STRIP * NUM_STRIPS, ledtype=LEDTYPE.WS2811, c_order=ChannelOrder.GRB)
+        driver = Serial(num=num_pixels, ledtype=LEDTYPE.WS2811, c_order=getattr(ChannelOrder, config.channel_order))
 
     led = Matrix(
         driver,
-        width=PIXELS_PER_STRIP,
-        height=NUM_STRIPS,
+        width=config.pixels_per_strip,
+        height=config.num_strips,
         brightness=brightness,
         serpentine=True,
     )
