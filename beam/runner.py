@@ -2,13 +2,13 @@ import os
 import math
 import time
 import json
+import enum
 import ctypes
 import random
+import platform
 import functools
 import threading
 import itertools
-import platform
-import enum
 
 from flask_cors import CORS
 
@@ -17,7 +17,6 @@ import flask
 from bibliopixel import log
 from bibliopixel.layout import Matrix
 from bibliopixel.drivers import SimPixel
-from bibliopixel.animation.matrix import BaseMatrixAnim
 from bibliopixel.animation.animation import STATE
 from bibliopixel.util import genVector, pointOnCircle
 from bibliopixel.animation import MatrixCalibrationTest
@@ -27,66 +26,13 @@ from bibliopixel.drivers.channel_order import ChannelOrder
 import bibliopixel.colors as color_util
 
 from config import config
+from animations.base import BaseBeamAnim, check_interrupt, adjustable, animation_dict, Interrupt
+from state import beam_state
 
 log.setLogLevel(log.INFO)
 
 app = flask.Flask(__name__)
 CORS(app)
-
-delay = config.initial_delay
-brightness = config.initial_brightness
-animation = config.initial_animation
-colors = config.initial_colors or ['#ff0000', '#00ff00', '#0000ff']
-colors = list(map(color_util.hex2rgb, colors))
-
-animation_dict = {}
-
-
-class AnimationMeta(type):
-    def __init__(cls, name, bases, dct):
-        # a little brittle
-        if 'BaseBeamAnim' in map(lambda b: b.__name__, bases):
-            animation_dict[cls.__name__] = cls
-
-        return super(AnimationMeta, cls).__init__(name, bases, dct)
-
-
-class Interrupt(Exception):
-    pass
-
-
-def check_interrupt(fn):
-    """
-    Decorator to check whether to kill animation between calls to step()
-    """
-    @functools.wraps(fn)
-    def wrapped(self, *args, **kwargs):
-        if animation and animation != self.__class__.__name__:
-            raise Interrupt('changing sequence')
-
-        return fn(self, *args, **kwargs)
-
-    return wrapped
-
-
-def adjustable(fn):
-    """
-    Allows updating the delay and brightness between calls to step() from
-    the globals
-    """
-    @functools.wraps(fn)
-    def wrapped(self, *args, **kwargs):
-        if self.internal_delay != delay:
-            log.info('delay changing from {} to {}'.format(self.internal_delay, delay))
-        self.set_delay(delay)
-        self.set_brightness(brightness)
-
-        if self._step > 10000000:
-            self._step = 0
-
-        return fn(self, *args, **kwargs)
-
-    return wrapped
 
 
 def get_location(x, y):
@@ -95,39 +41,6 @@ def get_location(x, y):
     Sometimes useful in step() functions.
     """
     return (y * config.pixels_per_strip) + x
-
-
-class BaseBeamAnim(BaseMatrixAnim, metaclass=AnimationMeta):
-    """
-    Adds some convenience methods to the base class
-    """
-
-    def __init__(self, layout):
-        super().__init__(layout)
-
-    def set_delay(self, d):
-        if d == self.internal_delay:
-            return
-
-        self.internal_delay = d
-
-    def set_brightness(self, b):
-        if b == self.layout.brightness:
-            return
-
-        self.layout.set_brightness(b)
-
-    def grid(self):
-        """
-        Returns a generator that yields all pairwise x, y combinations
-        in the matrix.
-        """
-
-        points = itertools.product(
-            range(self.layout.width),
-            range(self.layout.height),
-        )
-        return points
 
 
 class LangtonsAnt(BaseBeamAnim):
@@ -167,12 +80,12 @@ class LangtonsAnt(BaseBeamAnim):
             self.x = self.__rollValue(self.x, -1, 0, self.width - 1)
 
         self.curColor = self.layout.get(self.x, self.y)
-        self.layout.set(self.x, self.y, colors[0])
+        self.layout.set(self.x, self.y, beam_state.colors[0])
 
     @check_interrupt
     @adjustable
     def step(self, amt=1):
-        pathColors = colors[1:] if len(colors) > 1 else [color_util.Green]
+        pathColors = beam_state.colors[1:] if len(beam_state.colors) > 1 else [color_util.Green]
         if self.curColor in pathColors:
             self.layout.set(self.x, self.y, self.offColor)
             self.__changeDir(False)
@@ -190,7 +103,7 @@ class ColorWipeRotate(BaseBeamAnim):
     def step(self, amt=1):
         for x, y in self.grid():
             if self._step - PIXELS_PER_STRIP < x < self._step:
-                self.layout.set(x, y, random.choice(colors))
+                self.layout.set(x, y, random.choice(beam_state.colors))
             else:
                 self.layout.set(x, y, color_util.Off)
 
@@ -207,7 +120,7 @@ class ColorWipeSequential(BaseBeamAnim):
     def step(self, amt=1):
         for x, y in self.grid():
             if get_location(x, y) < self._step:
-                self.layout.set(x, y, random.choice(colors))
+                self.layout.set(x, y, random.choice(beam_state.colors))
             else:
                 self.layout.set(x, y, color_util.Off)
 
@@ -223,8 +136,8 @@ class Zap(BaseBeamAnim):
         super().__init__(layout)
 
         # First color
-        c_int = random.randint(0, len(colors) - 1)
-        self.color = color = colors[c_int]
+        c_int = random.randint(0, len(beam_state.colors) - 1)
+        self.color = color = beam_state.colors[c_int]
 
     @check_interrupt
     @adjustable
@@ -236,13 +149,13 @@ class Zap(BaseBeamAnim):
 
         for x, y in self.grid():
             if x <= bullet_pos and x > bullet_pos - tail_len:
-                brightness = 255 - ((bullet_pos - x) * (255 / tail_len))
-                self.layout.set(x, y, color_util.color_scale(self.color, brightness))
+                beam_state.brightness = 255 - ((bullet_pos - x) * (255 / tail_len))
+                self.layout.set(x, y, color_util.color_scale(self.color, beam_state.brightness))
 
         if bullet_pos + 1 >= PIXELS_PER_STRIP + tail_len:
             # Sequence is about to end; Reset the Zap!
-            c_int = random.randint(0, len(colors) - 1)
-            self.color = color = colors[c_int]
+            c_int = random.randint(0, len(beam_state.colors) - 1)
+            self.color = color = beam_state.colors[c_int]
             self._step = 0
         else:
             self._step += amt
@@ -254,7 +167,7 @@ class Twinkle(BaseBeamAnim):
         super().__init__(layout)
 
         self.layout = layout
-        self.colors = colors
+        self.colors = beam_state.colors
         self.density = 20
         self.speed = 2
         self.max_bright = 255
@@ -336,7 +249,7 @@ class Light(BaseBeamAnim):
     @adjustable
     def step(self, amt=1):
         for x, y in self.grid():
-            c = colors[get_location(x, y) % len(colors)]
+            c = beam_state.colors[get_location(x, y) % len(beam_state.colors)]
             self.layout.set(x, y, c)
 
         self._step = 0
@@ -350,9 +263,9 @@ class Strip(BaseBeamAnim):
     @check_interrupt
     @adjustable
     def step(self, amt=1):
-        color_length = len(colors)
+        color_length = len(beam_state.colors)
         for x, y in self.grid():
-            col_color = colors[(get_location(x, y) + self._step) % color_length]
+            col_color = beam_state.colors[(get_location(x, y) + self._step) % color_length]
             self.layout.set(x, y, col_color)
 
         if self._step + amt == color_length:
@@ -413,8 +326,8 @@ class Rain(BaseBeamAnim):
 
         for i in range(self._growth_rate):
             new_drop = random.randint(0, self.layout.width - 1)
-            c_int = random.randint(0, len(colors) - 1)
-            self._drops[new_drop].append((0, colors[c_int]))
+            c_int = random.randint(0, len(beam_state.colors) - 1)
+            self._drops[new_drop].append((0, beam_state.colors[c_int]))
 
         for y in range(self.layout.height):
             row = self._drops[y]
@@ -454,7 +367,7 @@ def main_loop(led):
     t.start()
 
     while True:
-        animation_class = get_new_input_class(animation)
+        animation_class = get_new_input_class(beam_state.animation)
         anim = animation_class(led)
         anim.set_runner(None)
 
@@ -474,10 +387,10 @@ def _rgb_to_hex(rgb_list):
 
 def _get_state():
     return {
-        'brightness': brightness,
-        'delay': delay,
-        'animation': animation,
-        'colors': list(map(_rgb_to_hex, colors)),
+        'brightness': beam_state.brightness,
+        'delay': beam_state.delay,
+        'animation': beam_state.animation,
+        'colors': list(map(_rgb_to_hex, beam_state.colors)),
     }
 
 
@@ -492,18 +405,15 @@ def change_beam_state():
 
     input_delay = request_dict.get('delay')
     if input_delay is not None and 0.0001 <= input_delay <= 100:
-        global delay
-        delay = input_delay
+        beam_state.delay = input_delay
 
     input_brightness = request_dict.get('brightness')
     if input_brightness is not None and 0 <= input_brightness <= 255:
-        global brightness
-        brightness = input_brightness
+        beam_state.brightness = input_brightness
 
     input_animation = request_dict.get('animation')
     if input_animation in animation_dict.keys():
-        global animation
-        animation = input_animation
+        beam_state.animation = input_animation
     else:
         log.info('unknown animation: {}'.format(input_animation))
 
@@ -511,8 +421,7 @@ def change_beam_state():
     if input_colors:
         try:
             input_colors = list(map(color_util.hex2rgb, input_colors))
-            global colors
-            colors = input_colors
+            beam_state.colors = input_colors
         except KeyError:
             log.info('invalid color passed')
 
@@ -535,11 +444,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.animation:
-        animation = args.animation
+        beam_state.animation = args.animation
     if args.brightness:
-        brightness = math.floor(args.brightness * (config.max_brightness / 255.))
+        beam_state.brightness = math.floor(args.brightness * (config.max_brightness / 255.))
     if args.delay:
-        delay = args.delay
+        beam_state.delay = args.delay
 
     num_pixels = config.pixels_per_strip * config.num_strips
     if config.driver == 'sim':
@@ -553,7 +462,7 @@ if __name__ == '__main__':
         driver,
         width=config.pixels_per_strip,
         height=config.num_strips,
-        brightness=brightness,
+        brightness=beam_state.brightness,
         serpentine=True,
     )
 
