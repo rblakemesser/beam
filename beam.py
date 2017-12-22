@@ -89,6 +89,8 @@ def adjustable(fn):
     """
     @functools.wraps(fn)
     def wrapped(self, *args, **kwargs):
+        if self.internal_delay != delay:
+            log.info('delay changing from {} to {}'.format(self.internal_delay, delay))
         self.set_delay(delay)
         self.set_brightness(brightness)
 
@@ -502,7 +504,7 @@ def change_beam_state():
     request_dict = flask.request.get_json()
 
     input_delay = request_dict.get('delay')
-    if input_delay is not None and 0.0001 <= input_delay <= 10:
+    if input_delay is not None and 0.0001 <= input_delay <= 100:
         global delay
         delay = input_delay
 
