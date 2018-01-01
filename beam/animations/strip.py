@@ -1,4 +1,6 @@
 from animations.base import BaseBeamAnim, check_interrupt, adjustable
+import beam.util as beam_util
+from beam.state import beam_state
 
 
 class Strip(BaseBeamAnim):
@@ -11,7 +13,7 @@ class Strip(BaseBeamAnim):
     def step(self, amt=1):
         color_length = len(beam_state.colors)
         for x, y in self.grid():
-            col_color = beam_state.colors[(get_location(x, y) + self._step) % color_length]
+            col_color = beam_state.colors[(beam_util.get_location(x, y) + self._step) % color_length]
             self.layout.set(x, y, col_color)
 
         if self._step + amt == color_length:

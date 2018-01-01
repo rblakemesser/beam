@@ -21,7 +21,7 @@ if os.path.exists(env_path):
 Config = type('Config', (), {})
 config = Config()
 
-config.pixels_per_strip = env_vars.get('PIXELS_PER_STRIP')
+config.pixels_per_strip = env_vars.get('PIXELS_PER_STRIP', 40)
 config.num_strips = env_vars.get('NUM_STRIPS', 2)
 config.max_brightness = env_vars.get('MAX_BRIGHTNESS', 255)
 config.channel_order = env_vars.get('CHANNEL_ORDER', 'GRB')

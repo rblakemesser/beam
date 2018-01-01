@@ -1,5 +1,7 @@
 import random
 from animations.base import BaseBeamAnim, check_interrupt, adjustable
+from beam.state import beam_state
+import bibliopixel.colors as color_util
 
 
 class Zap(BaseBeamAnim):

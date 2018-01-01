@@ -2,7 +2,6 @@ import itertools
 import functools
 from bibliopixel.animation.matrix import BaseMatrixAnim
 from bibliopixel import log
-
 from beam.state import beam_state
 
 

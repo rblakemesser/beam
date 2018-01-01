@@ -25,21 +25,14 @@ from bibliopixel.drivers.channel_order import ChannelOrder
 import bibliopixel.colors as color_util
 
 from config import config
-from animations.base import BaseBeamAnim, check_interrupt, adjustable, animation_dict, Interrupt
-from state import beam_state
+from animations.base import animation_dict, Interrupt
+from beam.state import beam_state
+import beam.util as beam_util
 
 log.setLogLevel(log.INFO)
 
 app = flask.Flask(__name__)
 CORS(app)
-
-
-def get_location(x, y):
-    """
-    Given x, y coordinates of a location, yield its ordinal position.
-    Sometimes useful in step() functions.
-    """
-    return (y * config.pixels_per_strip) + x
 
 
 Animation = enum.Enum('Animation', ' '.join(animation_dict.keys()))
@@ -70,18 +63,12 @@ def main_loop(led):
             pass
 
 
-def _rgb_to_hex(rgb_list):
-    """Return color as #rrggbb for the given color values."""
-    red, green, blue = rgb_list
-    return '#%02x%02x%02x' % (red, green, blue)
-
-
 def _get_state():
     return {
         'brightness': beam_state.brightness,
         'delay': beam_state.delay,
         'animation': beam_state.animation,
-        'colors': list(map(_rgb_to_hex, beam_state.colors)),
+        'colors': list(map(beam_util.rgb_to_hex, beam_state.colors)),
     }
 
 
@@ -105,6 +92,7 @@ def change_beam_state():
     input_animation = request_dict.get('animation')
     if input_animation in animation_dict.keys():
         beam_state.animation = input_animation
+        log.info('setting beam_state.animation to {}'.format(input_animation))
     else:
         log.info('unknown animation: {}'.format(input_animation))
 
@@ -149,8 +137,6 @@ if __name__ == '__main__':
         # hardware on pi
         driver = Serial(num=num_pixels, ledtype=LEDTYPE.WS2811, c_order=getattr(ChannelOrder, config.channel_order))
 
-    print(animation_dict.keys())
-    raise Exception()
     led = Matrix(
         driver,
         width=config.pixels_per_strip,

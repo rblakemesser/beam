@@ -1,5 +1,8 @@
 import random
 from animations.base import BaseBeamAnim, check_interrupt, adjustable
+import beam.util as beam_util
+import bibliopixel.colors as color_util
+from beam.state import beam_state
 
 
 class ColorWipeSequential(BaseBeamAnim):
@@ -8,7 +11,7 @@ class ColorWipeSequential(BaseBeamAnim):
     @adjustable
     def step(self, amt=1):
         for x, y in self.grid():
-            if get_location(x, y) < self._step:
+            if beam_util.get_location(x, y) < self._step:
                 self.layout.set(x, y, random.choice(beam_state.colors))
             else:
                 self.layout.set(x, y, color_util.Off)
