@@ -2,7 +2,7 @@
 # install systemd config to run beam as a service (BAAS)
 sudo cp /home/pi/workspace/beam/bin/beam.service /lib/systemd/system/
 sudo chmod 644 /lib/systemd/system/beam.service
-sudo chmod +x /home/pi/workspace/beam/beam.py
+sudo chmod +x /home/pi/workspace/beam/beam/runner.py
 sudo systemctl daemon-reload
 sudo systemctl enable beam
 sudo systemctl start beam
