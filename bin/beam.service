@@ -9,7 +9,7 @@ Type=simple
 User=pi
 Environment=PYTHONPATH=/home/pi/workspace/beam/
 ExecStart=/home/pi/workspace/beam/venv/bin/python /home/pi/workspace/beam/beam/runner.py
-Restart=on-abort
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
