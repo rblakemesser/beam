@@ -72,12 +72,12 @@ def _get_state():
     }
 
 
-@app.route('/', methods=['GET'])
+@app.route('/api/', methods=['GET'])
 def get_beam_state():
     return flask.Response(json.dumps(_get_state()), 200)
 
 
-@app.route('/', methods=['POST'])
+@app.route('/api/', methods=['POST'])
 def change_beam_state():
     request_dict = flask.request.get_json()
 
@@ -132,10 +132,13 @@ if __name__ == '__main__':
     num_pixels = config.pixels_per_strip * config.num_strips
     if config.driver == 'sim':
         # simulator on osx
+        log.info('using sim driver')
         driver = SimPixel.SimPixel(num=num_pixels)
     else:
         # hardware on pi
-        driver = Serial(num=num_pixels, ledtype=LEDTYPE.WS2811, c_order=getattr(ChannelOrder, config.channel_order))
+        c_order = getattr(ChannelOrder, config.channel_order)
+        log.info('using neopixel driver with channel order: {}'.format(c_order))
+        driver = Serial(num=num_pixels, ledtype=LEDTYPE.WS2811, c_order=c_order)
 
     led = Matrix(
         driver,
