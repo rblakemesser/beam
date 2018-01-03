@@ -87,7 +87,7 @@ def change_beam_state():
 
     input_brightness = request_dict.get('brightness')
     if input_brightness is not None and 0 <= input_brightness <= 255:
-        beam_state.brightness = input_brightness
+        beam_state.brightness = math.floor(input_brightness * (config.max_brightness / 255.))
 
     input_animation = request_dict.get('animation')
     if input_animation in animation_dict.keys():
