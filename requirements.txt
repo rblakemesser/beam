@@ -36,3 +36,4 @@ urllib3==1.22
 wcwidth==0.1.7
 Werkzeug==0.12.2
 Flask-Cors==3.0.3
+python-chess==0.22.0
