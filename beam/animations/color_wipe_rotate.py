@@ -1,7 +1,7 @@
 import random
 from animations.base import BaseBeamAnim, check_interrupt, adjustable
 import bibliopixel.colors as color_util
-from beam.state import beam_state
+from state import beam_state
 
 
 class ColorWipeRotate(BaseBeamAnim):

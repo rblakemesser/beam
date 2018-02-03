@@ -1,6 +1,6 @@
-from beam.state import beam_state
+from state import beam_state
 from animations.base import BaseBeamAnim, check_interrupt, adjustable
-import beam.util as beam_util
+import util as beam_util
 
 
 class Light(BaseBeamAnim):
