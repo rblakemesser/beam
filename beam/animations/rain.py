@@ -1,7 +1,7 @@
 import random
 from animations.base import BaseBeamAnim, check_interrupt, adjustable
-from beam.state import beam_state
-import beam.util as beam_util
+from state import beam_state
+import util as beam_util
 import bibliopixel.colors as color_util
 
 

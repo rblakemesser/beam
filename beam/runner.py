@@ -26,8 +26,8 @@ import bibliopixel.colors as color_util
 
 from config import config
 from animations.base import animation_dict, Interrupt
-from beam.state import beam_state
-import beam.util as beam_util
+from state import beam_state
+import util as beam_util
 
 log.setLogLevel(log.INFO)
 
