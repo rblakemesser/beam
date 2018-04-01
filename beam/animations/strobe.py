@@ -10,15 +10,17 @@ class Strobe(BaseBeamAnim):
     @check_interrupt
     @adjustable
     def step(self, amt=1):
+        color_length = len(beam_state.colors)
+
         for x, y in self.grid():
             if self._step % 2:
                 c = beam_state.colors[beam_util.get_location(x, y) % len(beam_state.colors)]
             else:
                 c = (0, 0, 0)
-                
+
             self.layout.set(x, y, c)
 
-        if self._step + amt == color_length:
+        if self._step > 1000 and self._step + amt == color_length:
             self._step = 0
         else:
             self._step += amt
