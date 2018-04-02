@@ -11,7 +11,7 @@ class Twinkle(BaseBeamAnim):
 
         self.layout = layout
         self.colors = beam_state.colors
-        self.density = 20
+        self.density = 50
         self.speed = 2
         self.max_bright = 255
 

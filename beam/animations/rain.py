@@ -7,7 +7,7 @@ import bibliopixel.colors as color_util
 
 class Rain(BaseBeamAnim):
 
-    def __init__(self, layout, tail=4, growth_rate=4):
+    def __init__(self, layout, tail=6, growth_rate=8):
         super().__init__(layout)
         self._tail = tail
         self._growth_rate = growth_rate
