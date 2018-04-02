@@ -10,3 +10,4 @@ from .zap import Zap
 from .color_wipe_rotate import ColorWipeRotate
 from .color_wipe_sequential import ColorWipeSequential
 from .strobe import Strobe
+from .rainbow_strobe import RainbowStrobe
