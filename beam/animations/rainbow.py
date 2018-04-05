@@ -15,4 +15,4 @@ class Rainbow(BaseBeamAnim):
         if self._step + amt == 255:
             self._step = 0
         else:
-            self._step += amt * 4
+            self._step += amt * 8

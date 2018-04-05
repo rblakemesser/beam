@@ -2,7 +2,7 @@ from animations.base import BaseBeamAnim, check_interrupt, adjustable
 import bibliopixel.colors as color_util
 
 
-step_count = 8
+step_count = 16
 
 
 class RainbowStrobe(BaseBeamAnim):
