@@ -18,4 +18,4 @@ class RainbowStrobe(BaseBeamAnim):
         if self._step + amt == 255:
             self._step = 0
         else:
-            self._step += amt
+            self._step += amt * 8
