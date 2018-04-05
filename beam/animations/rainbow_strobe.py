@@ -2,13 +2,16 @@ from animations.base import BaseBeamAnim, check_interrupt, adjustable
 import bibliopixel.colors as color_util
 
 
+step_count = 8
+
+
 class RainbowStrobe(BaseBeamAnim):
 
     @check_interrupt
     @adjustable
     def step(self, amt=1):
         for x, y in self.grid():
-            if not self._step % 2:
+            if not self._step % (step_count * 2):
                 hsv = ((self._step + x) % 255, 255, 255)
                 c = color_util.hsv2rgb(hsv)
             else:
@@ -18,4 +21,4 @@ class RainbowStrobe(BaseBeamAnim):
         if self._step + amt == 255:
             self._step = 0
         else:
-            self._step += amt * 8
+            self._step += amt * step_count
